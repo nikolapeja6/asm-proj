@@ -64,3 +64,12 @@ fabric.properties
 
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
+
+
+# Custom
+
+# ignore csv files created by the script
+*.csv
+
+# ignore output pdf
+*.pdf
