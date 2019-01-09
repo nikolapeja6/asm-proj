@@ -12,7 +12,10 @@ import time
 from networkx.algorithms import community
 from matplotlib import colors as mcolors
 import numpy as np
-
+from difflib import SequenceMatcher
+from collections import OrderedDict
+from collections import Counter
+import operator
 
 DATA_DIR: str = 'data'
 RESULTS_DIR: str = 'results'
@@ -30,6 +33,8 @@ movie_array = list()
 genre_dictionary = dict()
 genres_by_movies = list()
 movie_dictionary = dict()
+director_dictionary = dict()
+link_director_actor = list()
 
 list_of_movies = list()
 list_of_actors = set()
@@ -64,8 +69,11 @@ def suffix():
         ts = time.time()
         return "___"+datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H_%M_%S')
 
+def similar(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
-def extract_secondary_dataset(clean: bool = False):
+
+def extract_secondary_dataset(clean: bool = False, revenue_filter: int = 0):
     global primary_dataset_header
     global primary_dataset
     global actor_dictionary
@@ -79,6 +87,8 @@ def extract_secondary_dataset(clean: bool = False):
     global list_of_genres
     global link_acted_in
     global link_is_genre
+    global director_dictionary
+    global link_director_actor
     print("Extracting secondary dataset.")
 
     primary_dataset.clear()
@@ -93,6 +103,8 @@ def extract_secondary_dataset(clean: bool = False):
     list_of_genres.clear()
     link_acted_in.clear()
     link_is_genre.clear()
+    director_dictionary.clear()
+    link_director_actor.clear()
 
     extract_csv_from_zip(clean)
 
@@ -114,6 +126,8 @@ def extract_secondary_dataset(clean: bool = False):
     movie_index: int = primary_dataset_header.index("Rank")
     genre_index: int = primary_dataset_header.index("Genre")
     year_index: int = primary_dataset_header.index("Year")
+    revenue_index: int = primary_dataset_header.index("Revenue (Millions)")
+    director_index: int = primary_dataset_header.index("Director")
 
     print("Creating secondary actor dataset.")
 
@@ -124,6 +138,22 @@ def extract_secondary_dataset(clean: bool = False):
         year: int = row[year_index]
         title: str = row[title_index]
         title = title.strip()
+        director: str = row[director_index]
+        revenue: float = row[revenue_index].strip()
+
+        if revenue is None or revenue == "":
+            revenue = 0
+        else:
+            revenue = float(revenue)
+
+        # Filer
+        if revenue < revenue_filter:
+            continue
+
+        if director in director_dictionary:
+            director_dictionary[director]+=1
+        else:
+            director_dictionary[director] = 1
 
         list_of_movies.append([title, year])
 
@@ -137,9 +167,14 @@ def extract_secondary_dataset(clean: bool = False):
 
         for actor in actors.split(","):
             actor = actor.strip()
+            #clean
+            if actor == "Evan Rachel Wood":
+                actor = "Rachel Wood"
 
             list_of_actors.add(actor)
             link_acted_in.append([int(movie_id)-1, actor])
+
+            link_director_actor.append([director, actor])
 
             tmp_list2.append(actor)
             if actor in actor_dictionary:
@@ -176,6 +211,28 @@ def extract_secondary_dataset(clean: bool = False):
 
     print("Finished creating secondary dataset.")
 
+    # Found noise:
+    #   - Evan Rachel Wood : Rachel Wood
+    '''
+    print("***")
+    for actor1 in list_of_actors:
+        for actor2 in list_of_actors:
+            if actor1 != actor2 and similar(actor1, actor2) > 0.8:
+                print(actor1+" : "+actor2)
+    print("***")
+    for genre1 in list_of_genres:
+        for genre2 in list_of_genres:
+            if genre1 != genre2 and similar(genre1, genre2) > 0.5:
+                print(genre1+" : "+genre2)
+    
+    print("***")
+
+    for key1, value1 in director_dictionary.items():
+        for key2, value2 in director_dictionary.items():
+            if key1 != key2 and similar(key1, key2) > 0.8:
+                print(key1+" : "+key2)
+    print("***")
+    '''
 
 def create_actor_network():
     actor_graph = nx.Graph()
@@ -407,6 +464,7 @@ def q4(actor_network: nx.Graph):
 
     save_actor_graph_as_pdf(actor_network, color=colors, fileName=results_path("q4.pdf"))
 
+
 def q7(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
     with open(results_path("q7.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
@@ -418,6 +476,47 @@ def q7(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
 
     csvFile.close()
 
+
+def q8(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    with open(results_path("q8.csv"), 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
+
+        row = ["", "Actor", "Genre", "Movie"]
+        writer.writerow(row)
+
+
+        n1 = nx.average_node_connectivity(actor_network)
+        print(n1)
+        n2 = nx.average_node_connectivity(genre_network)
+        print(n2)
+        n3 = nx.average_node_connectivity(movie_network)
+        print(n3)
+        row = ["Connectivity", n1, n2, n3]
+        writer.writerow(row)
+        '''
+        n1 = nx.closeness_centrality(actor_network)
+        print(n1)
+        n2 = nx.closeness_centrality(genre_network)
+        n3 = nx.closeness_centrality(movie_network)
+
+        row = ["Closeness centrality", n1, n2, n3]
+        writer.writerow(row)
+        ''
+        n1 = nx.betweenness_centrality(actor_network)
+        n2 = nx.betweenness_centrality(genre_network)
+        n3 = nx.betweenness_centrality(movie_network)
+
+        row = ["Betweenness centrality", n1, n2, n3]
+        writer.writerow(row)
+        '''
+        n1 = nx.global_reaching_centrality(actor_network)
+        n2 = nx.global_reaching_centrality(genre_network)
+        n3 = nx.global_reaching_centrality(movie_network)
+
+        row = ["Global reaching centrality", n1, n2, n3]
+        writer.writerow(row)
+
+    csvFile.close()
 
 def q9(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
     with open(results_path("q9.csv"), 'w', newline='') as csvFile:
@@ -568,7 +667,63 @@ def q15(genre_network: nx.Graph, top: int = 10):
     csvFile.close()
 
 
+def q18(top: int = 1):
+    answer = sorted(director_dictionary.items(), key= lambda x: x[1], reverse=True)[:top]
+    with open(results_path("q18.csv"), 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
+        row = ["Director", "Times"]
+        writer.writerow(row)
+
+        for item in answer:
+            row = [item[0], item[1]]
+            writer.writerow(row)
+
+    csvFile.close()
+
+def q19(filter: int = 1):
+    with open(results_path("q19.csv"), 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
+
+        row = ["Director", "Actor", "Times"]
+        writer.writerow(row)
+
+        tmp = list()
+        for item in link_director_actor:
+            tmp.append(item[0]+","+item[1])
+
+        answer = list()
+
+        for item in set(tmp):
+            cnt: int = tmp.count(item)
+            if cnt > filter:
+                item = item.split(",")
+                row = [item[0], item[1], cnt]
+                answer.append(row)
+        writer.writerows(sorted(answer, reverse=True, key=lambda x: x[2]))
+
+    csvFile.close()
+
+def q20(top:int = 1):
+
+    answer = dict()
+    for item in list_of_movies:
+        year = item[1]
+        if year in answer:
+            answer[year] += 1
+        else:
+            answer[year] = 1
+
+    answer = sorted(answer.items(), key=operator.itemgetter(1), reverse=True)
+
+    with open(results_path("q20.csv"), 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
+
+        row = ["Year", "Movies"]
+        writer.writerow(row)
+        writer.writerows(answer[:top])
+
+    csvFile.close()
 # Main.
 extract_secondary_dataset()
 
@@ -591,11 +746,15 @@ movie_network = create_movie_network()
 #q4(actor_network)
 
 #q7(actor_network, genre_network, movie_network)
-
+q8(actor_network, genre_network, movie_network)
 #q9(actor_network, genre_network, movie_network)
 #q10(actor_network, genre_network, movie_network)
 
 #q13(actor_network)
 #q14(actor_network, 2)
-q15(genre_network)
+#q15(genre_network)
+
+#q18()
+#q19(4)
+#q20()
 print("End")
