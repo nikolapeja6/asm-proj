@@ -15,7 +15,10 @@ import numpy as np
 from difflib import SequenceMatcher
 from collections import OrderedDict
 from collections import Counter
+import matplotlib.backends.backend_pdf
 import operator
+import winsound
+
 
 DATA_DIR: str = 'data'
 RESULTS_DIR: str = 'results'
@@ -72,6 +75,18 @@ def suffix():
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
+def my_average_shortest_path(graph: nx.Graph):
+    cnt: int = 0
+    length: int = 0
+
+    for node1 in graph.nodes():
+        for node2 in graph.nodes():
+            if node1 != node2 and nx.has_path(graph, node1, node2):
+                length += len(nx.shortest_path(graph, node1, node2))-1
+                cnt += 1
+
+    return length/cnt
+
 
 def extract_secondary_dataset(clean: bool = False, revenue_filter: int = 0):
     global primary_dataset_header
@@ -107,6 +122,7 @@ def extract_secondary_dataset(clean: bool = False, revenue_filter: int = 0):
     link_director_actor.clear()
 
     extract_csv_from_zip(clean)
+    primary_dataset_header = None
 
     with open(data_path(PRIMARY_DATASET), 'r') as csvFile:
         reader = csv.reader(csvFile)
@@ -464,6 +480,189 @@ def q4(actor_network: nx.Graph):
 
     save_actor_graph_as_pdf(actor_network, color=colors, fileName=results_path("q4.pdf"))
 
+def get_actors_most_played_genre(actor: str):
+    gnrs = dict()
+    for genre in list_of_genres:
+        gnrs[genre] = 0
+
+    for item in link_is_genre:
+        movie = item[0]
+        genre = item[1]
+        movie += 1
+        if str(movie) in actor_dictionary[actor]:
+            gnrs[genre] +=1
+
+
+    max: int = 0
+    for value in gnrs.values():
+        if value > max:
+            max = value
+
+    tmp = list()
+    for genre, value in gnrs.items():
+        if value == max:
+            tmp.append(genre)
+
+    tmp.sort()
+    #gnrs = sorted(gnrs, key=gnrs.get, reverse=True)
+    return tmp[0]
+
+
+def get_dict_of_most_genres_per_actor():
+    ret = dict()
+    for actor in list_of_actors:
+        ret[actor] = get_actors_most_played_genre(actor)
+
+    return ret
+
+def q5(actor_graph: nx.Graph):
+
+    actor_genre_dict = get_dict_of_most_genres_per_actor()
+    genre_counter = Counter(actor_genre_dict.values())
+
+    color_genre_dic = dict()
+    for genre in list_of_genres:
+        color_genre_dic[genre] = random_color()
+
+    colors = list()
+    for actor in actor_graph.nodes():
+        colors.append(color_genre_dic[actor_genre_dict[actor]])
+
+    n: int = 4
+    number_of_nodes: int = len(actor_graph.nodes())
+    pos = nx.spring_layout(actor_graph, k=(1 / math.sqrt(number_of_nodes)) * n)
+
+    graph = nx.Graph()
+    graph.add_nodes_from(actor_graph.nodes())
+    for edge in actor_graph.edges():
+        actor1 = edge[0]
+        actor2 = edge[1]
+        if actor_genre_dict[actor1] == actor_genre_dict[actor2]:
+            graph.add_edge(actor1, actor2)
+
+    pos2 = nx.spring_layout(graph, k=(1 / math.sqrt(number_of_nodes)) * n)
+    
+    gnrs = dict()
+    for genre in list_of_genres:
+        gnrs[genre] = 0
+    for actor, genre in actor_genre_dict.items():
+        gnrs[genre] += 1
+
+    pdf = matplotlib.backends.backend_pdf.PdfPages(results_path("q5.pdf"))
+
+    pl.figure(figsize=(20, 20))  # Don't create a humongous figure
+    nx.draw_networkx(actor_graph, pos, node_size=30, font_size='xx-small', with_labels=False, node_color=colors)
+    pl.axis('off')
+    pdf.savefig(pl.gcf(), dpi=900)
+
+    pl.figure(figsize=(20, 20))  # Don't create a humongous figure
+    nx.draw_networkx(graph, pos, node_size=30, font_size='xx-small', with_labels=False, node_color=colors)
+    pl.axis('off')
+    pdf.savefig(pl.gcf(), dpi=900)
+
+    pl.figure(figsize=(20, 20))  # Don't create a humongous figure
+    nx.draw_networkx(graph, pos2, node_size=30, font_size='xx-small', with_labels=False, node_color=colors)
+    pl.axis('off')
+    pdf.savefig(pl.gcf(), dpi=900)
+
+    fig = pl.figure(figsize=(20,20))
+    ax = fig.add_subplot(111)
+    pl.title('Distribution of actors across genres')
+
+    frequencies = genre_counter.values()
+    names = list(genre_counter.keys())
+
+    tmp = list()
+    for name in names:
+        tmp.append(color_genre_dic[name])
+
+    x_coordinates = np.arange(len(genre_counter))
+    ax.bar(x_coordinates, frequencies, align='center', color=tmp)
+
+    ax.xaxis.set_major_locator(pl.FixedLocator(x_coordinates))
+    ax.xaxis.set_major_formatter(pl.FixedFormatter(names))
+    pdf.savefig(fig, dpi=900)
+
+    pdf.close()
+
+
+def sored_nodes_on_betweenness_centrality(graph: nx.Graph):
+    ret = list()
+    bc = nx.betweenness_centrality(graph)
+    for node in graph.nodes():
+        ret.append([node,  bc[node]])
+
+    ret.sort(key=lambda x: x[1], reverse=True)
+    return ret
+
+
+def sorted_nodes_on_degree_centrality(graph: nx.Graph):
+    ret = list()
+    dc = nx.degree_centrality(graph)
+    for node in graph.nodes():
+        ret.append([node, dc[node]])
+
+    ret.sort(key=lambda x: x[1], reverse=True)
+    return ret
+
+def sorted_nodes_on_bc_dc(bc: list, dc: list):
+    ret = list()
+    for item1 in bc:
+        for item2 in dc:
+            if item1[0] == item2[0]:
+                ret.append([item1[0], item1[1]*item2[1]])
+                break
+
+    ret.sort(key=lambda x: x[1], reverse=True)
+    return ret
+
+def q6(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph, top: int=10):
+    with open(results_path("q6.csv"), 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
+
+        row = ["", "Actor", "Top BC", "Actor", "Top DC", "Actor", "Top DC*BC"]
+        writer.writerow(row)
+
+        bc = sored_nodes_on_betweenness_centrality(actor_network)
+        dc = sorted_nodes_on_degree_centrality(actor_network)
+        bc_dc = sorted_nodes_on_bc_dc(bc, dc)
+
+        for i in range(1,top+1):
+            row = [i,bc[i][0], bc[i][1],dc[i][0], dc[i][1],bc_dc[i][0], bc_dc[i][1]]
+            writer.writerow(row)
+
+        row = []
+        writer.writerow(row)
+
+        row = ["", "Genre", "Top BC", "Genre", "Top DC", "Genre", "Top DC*BC"]
+        writer.writerow(row)
+
+        bc = sored_nodes_on_betweenness_centrality(genre_network)
+        dc = sorted_nodes_on_degree_centrality(genre_network)
+        bc_dc = sorted_nodes_on_bc_dc(bc, dc)
+
+        for i in range(1, top + 1):
+            row = [i, bc[i][0], bc[i][1], dc[i][0], dc[i][1], bc_dc[i][0], bc_dc[i][1]]
+            writer.writerow(row)
+
+        row = []
+        writer.writerow(row)
+
+        row = ["", "Movie", "Top BC", "Movie", "Top DC", "Movie", "Top DC*BC"]
+        writer.writerow(row)
+
+        bc = sored_nodes_on_betweenness_centrality(movie_network)
+        dc = sorted_nodes_on_degree_centrality(movie_network)
+        bc_dc = sorted_nodes_on_bc_dc(bc, dc)
+
+        for i in range(1, top + 1):
+            row = [i, bc[i][0], bc[i][1], dc[i][0], dc[i][1], bc_dc[i][0], bc_dc[i][1]]
+            writer.writerow(row)
+
+        row = []
+        writer.writerow(row)
+
+    csvFile.close()
 
 def q7(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
     with open(results_path("q7.csv"), 'w', newline='') as csvFile:
@@ -477,6 +676,14 @@ def q7(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
     csvFile.close()
 
 
+def my_sum(lst: dict):
+    return sum(x for x in lst.values())
+
+
+def my_avg(lst: dict):
+    return my_sum(lst)/len(lst)
+
+
 def q8(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
     with open(results_path("q8.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
@@ -484,7 +691,91 @@ def q8(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
         row = ["", "Actor", "Genre", "Movie"]
         writer.writerow(row)
 
+        n1 = my_avg(nx.closeness_centrality(actor_network))
+        n2 = my_avg(nx.closeness_centrality(genre_network))
+        n3 = my_avg(nx.closeness_centrality(movie_network))
 
+        row = ["Closeness centrality", n1, n2, n3]
+        writer.writerow(row)
+
+        n1 = my_avg(nx.betweenness_centrality(actor_network))
+        n2 = my_avg(nx.betweenness_centrality(genre_network))
+        n3 = my_avg(nx.betweenness_centrality(movie_network))
+
+        row = ["Betweenness centrality", n1, n2, n3]
+        writer.writerow(row)
+
+        n1 = my_avg(nx.degree_centrality(actor_network))
+        n2 = my_avg(nx.degree_centrality(genre_network))
+        n3 = my_avg(nx.degree_centrality(movie_network))
+
+        row = ["Normalized degree centrality", n1, n2, n3]
+        writer.writerow(row)
+
+        n1 = my_avg(nx.eigenvector_centrality_numpy(actor_network))
+        n2 = my_avg(nx.eigenvector_centrality_numpy(genre_network))
+        n3 = my_avg(nx.eigenvector_centrality_numpy(movie_network))
+
+        row = ["Eigenvector centrality", n1, n2, n3]
+        writer.writerow(row)
+
+        n1 = my_avg(nx.katz_centrality_numpy(actor_network))
+        n2 = my_avg(nx.katz_centrality_numpy(genre_network))
+        n3 = my_avg(nx.katz_centrality_numpy(movie_network))
+
+        row = ["Katz centrality", n1, n2, n3]
+        writer.writerow(row)
+
+        n1 = my_avg(nx.edge_betweenness_centrality(actor_network))
+        n2 = my_avg(nx.edge_betweenness_centrality(genre_network))
+        n3 = my_avg(nx.edge_betweenness_centrality(movie_network))
+
+        row = ["Edge betweenness centrality", n1, n2, n3]
+        writer.writerow(row)
+
+        # Error
+        '''
+        print(nx.percolation_centrality(actor_network))
+        n1 = my_avg(nx.percolation_centrality(actor_network))
+        n2 = my_avg(nx.percolation_centrality(genre_network))
+        n3 = my_avg(nx.percolation_centrality(movie_network))
+        
+        row = ["Percolation centrality", n1, n2, n3]
+        writer.writerow(row)
+        '''
+
+        n1 = my_avg(nx.pagerank(actor_network))
+        n2 = my_avg(nx.pagerank(genre_network))
+        n3 = my_avg(nx.pagerank(movie_network))
+
+        row = ["PageRank centrality", n1, n2, n3]
+        writer.writerow(row)
+
+        n1 = nx.global_reaching_centrality(actor_network)
+        n2 = nx.global_reaching_centrality(genre_network)
+        n3 = nx.global_reaching_centrality(movie_network)
+
+        row = ["Global reaching centrality", n1, n2, n3]
+        writer.writerow(row)
+
+        row = []
+        writer.writerow
+
+        n1 = nx.node_connectivity(actor_network)
+        n2 = nx.node_connectivity(genre_network)
+        n3 = nx.node_connectivity(movie_network)
+
+        row = ["Node connectivity", n1, n2, n3]
+        writer.writerow(row)
+
+        n1 = nx.edge_connectivity(actor_network)
+        n2 = nx.edge_connectivity(genre_network)
+        n3 = nx.edge_connectivity(movie_network)
+
+        row = ["Edge connectivity", n1, n2, n3]
+        writer.writerow(row)
+
+        '''
         n1 = nx.average_node_connectivity(actor_network)
         print(n1)
         n2 = nx.average_node_connectivity(genre_network)
@@ -494,28 +785,6 @@ def q8(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
         row = ["Connectivity", n1, n2, n3]
         writer.writerow(row)
         '''
-        n1 = nx.closeness_centrality(actor_network)
-        print(n1)
-        n2 = nx.closeness_centrality(genre_network)
-        n3 = nx.closeness_centrality(movie_network)
-
-        row = ["Closeness centrality", n1, n2, n3]
-        writer.writerow(row)
-        ''
-        n1 = nx.betweenness_centrality(actor_network)
-        n2 = nx.betweenness_centrality(genre_network)
-        n3 = nx.betweenness_centrality(movie_network)
-
-        row = ["Betweenness centrality", n1, n2, n3]
-        writer.writerow(row)
-        '''
-        n1 = nx.global_reaching_centrality(actor_network)
-        n2 = nx.global_reaching_centrality(genre_network)
-        n3 = nx.global_reaching_centrality(movie_network)
-
-        row = ["Global reaching centrality", n1, n2, n3]
-        writer.writerow(row)
-
     csvFile.close()
 
 def q9(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
@@ -526,17 +795,17 @@ def q9(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
         writer.writerow(row)
 
         try:
-            n1 = nx.average_shortest_path_length(actor_network)
+            n1 = my_average_shortest_path(actor_network)
         except nx.exception.NetworkXError:
             n1 = 'graph is not connected'
 
         try:
-            n2 = nx.average_shortest_path_length(genre_network)
+            n2 = my_average_shortest_path(genre_network)
         except nx.exception.NetworkXError:
             n2 = 'graph is not connected'
 
         try:
-            n3 = nx.average_shortest_path_length(movie_network)
+            n3 = my_average_shortest_path(movie_network)
         except nx.exception.NetworkXError:
             n3 = 'graph is not connected'
 
@@ -608,6 +877,80 @@ def q10(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Grap
 
     csvFile.close()
 
+def q11(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    pdf = matplotlib.backends.backend_pdf.PdfPages(results_path("q11.pdf"))
+
+    fig = pl.figure()
+    pl.title('Actor network - distribution of node degrees')
+    pl.hist([val for (node, val) in actor_network.degree()], bins=50)
+    pdf.savefig(fig, dpi=900)
+
+    fig = pl.figure()
+    pl.title('Genre network - distribution of node degrees')
+    pl.hist([val for (node, val) in genre_network.degree()], bins=20)
+    pdf.savefig(fig, dpi=900)
+
+    fig = pl.figure()
+    pl.title('Movie network - distribution of node degrees')
+    pl.hist([val for (node, val) in movie_network.degree()], bins=50)
+    pdf.savefig(fig, dpi=900)
+
+    pdf.close()
+
+
+def number_of_triangles(graph: nx.Graph):
+    return sum(x for x in nx.triangles(actor_network).values())/3
+
+def number_of_paths_len_2(graph: nx.Graph):
+    cnt: int = 0
+    for node1 in graph.nodes():
+        for node2 in graph.nodes():
+            if node1 != node2:
+                for path in nx.all_simple_paths(graph, source=node1, target=node2, cutoff=2):
+                    if len(path) == 2:
+                        cnt+=1
+    return cnt
+
+def c_del(graph: nx.Graph):
+    return (3*number_of_triangles(graph))/number_of_paths_len_2(graph)
+
+def gam(graph: nx.Graph, rand: nx.Graph):
+    return c_del(graph)/c_del(rand)
+
+def lam(graph: nx.Graph, rand: nx.Graph):
+    return my_average_shortest_path(graph)/ my_average_shortest_path(rand)
+
+def s(graph: nx.Graph):
+    n: int = graph.number_of_nodes()
+    m: int = graph.number_of_edges()
+    p: int = 2*m/(n*(n-1))
+    rand = nx.erdos_renyi_graph(n,p)
+
+    return gam(graph, rand)/lam(graph,rand)
+
+
+def is_small_world(graph: nx.Graph):
+    return s(graph) > 1
+
+
+def q12(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    with open(results_path("q12.csv"), 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
+
+        row = ["Network", "Is small world?"]
+        writer.writerow(row)
+
+        row = ["Actor", is_small_world(actor_network)]
+        writer.writerow(row)
+
+        row = ["Genre", is_small_world(genre_network)]
+        writer.writerow(row)
+
+        row = ["Movie", is_small_world(movie_network)]
+        writer.writerow(row)
+
+    csvFile.close()
+
 
 def q13(actor_network: nx.Graph):
     with open(results_path("q13.csv"), 'w', newline='') as csvFile:
@@ -665,6 +1008,97 @@ def q15(genre_network: nx.Graph, top: int = 10):
             writer.writerow(row)
 
     csvFile.close()
+
+
+def q16(top: int=10):
+
+    answer = list()
+    for i in range(0, len(list_of_movies)):
+        id = i+1
+        title = list_of_movies[i][0]
+        year = int(list_of_movies[i][1])
+
+        cnt: int =  0
+        for actor in movie_array[i]:
+            for item in link_acted_in:
+                movie_id = item[0]
+                if actor == item[1] and int(list_of_movies[movie_id][1]) > year:
+                    cnt += 1
+
+        answer.append([title, cnt])
+
+    answer.sort(key=lambda x: x[1], reverse=True)
+
+    answer = answer[:top]
+
+    with open(results_path("q16.csv"), 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
+
+        writer.writerow(["Movie", "Number of parts the actors got in the following years"])
+        writer.writerows(answer)
+
+    csvFile.close()
+
+
+def q17_helper(filter: int):
+
+    actor_graph = create_actor_network()
+    genre_graph = create_genre_network()
+    movie_graph = create_movie_network()
+
+    n: int = 4
+    number_of_nodes: int = len(actor_graph.nodes())
+    pos = nx.spring_layout(actor_graph, k=(1 / math.sqrt(number_of_nodes)) * n)
+
+    pdf = matplotlib.backends.backend_pdf.PdfPages(results_path("q17_"+str(filter)+".pdf"))
+
+    pl.figure(figsize=(20, 20))  # Don't create a humongous figure
+    nx.draw_networkx(actor_graph, pos, node_size=30, font_size='xx-small', with_labels=False)
+    pl.axis('off')
+    pdf.savefig(pl.gcf(), dpi=900)
+
+    n: int = 5
+    pos = nx.spring_layout(genre_graph, iterations=200)
+    fig = pl.figure(figsize=(30, 30))  # Don't create a humongous figure
+    nx.draw_networkx(genre_graph, pos, node_size=5000, font_size='medium', style='dotted', with_labels=True,
+                     node_shape='s', font_color='white')
+    pl.axis('off')
+    pdf.savefig(fig, dpi=900)
+
+    number_of_nodes: int = len(movie_graph.nodes())
+    n: int = 2
+    pos = nx.spring_layout(movie_graph, k=(1/math.sqrt(number_of_nodes))*n)
+    fig = pl.figure(figsize=(20, 20))  # Don't create a humongous figure
+    nx.draw_networkx(movie_graph, pos, node_size=30, font_size='xx-small', with_labels=False, node_shape='o',
+                     font_color='white', edge_color='grey')
+    pl.axis('off')
+    pdf.savefig(fig, dpi=900)
+
+    pdf.close()
+
+
+def q17():
+    n = 20
+    extract_secondary_dataset(True, n)
+    q17_helper(n)
+
+    n = 50
+    extract_secondary_dataset(True, n)
+    q17_helper(n)
+
+    n = 100
+    extract_secondary_dataset(True, n)
+    q17_helper(n)
+
+    n = 200
+    extract_secondary_dataset(True, n)
+    q17_helper(n)
+
+    n = 500
+    extract_secondary_dataset(True, n)
+    q17_helper(n)
+
+    extract_secondary_dataset(True)
 
 
 def q18(top: int = 1):
@@ -744,17 +1178,25 @@ movie_network = create_movie_network()
 #q2(actor_network)
 #q3(actor_network)
 #q4(actor_network)
-
+#q5(actor_network)
+#q6(actor_network, genre_network, movie_network)
 #q7(actor_network, genre_network, movie_network)
-q8(actor_network, genre_network, movie_network)
+#q8(actor_network, genre_network, movie_network)
 #q9(actor_network, genre_network, movie_network)
 #q10(actor_network, genre_network, movie_network)
-
+#q11(actor_network, genre_network, movie_network)
+#q12(actor_network, genre_network, movie_network)
 #q13(actor_network)
 #q14(actor_network, 2)
 #q15(genre_network)
-
+q16()
+#q17()
 #q18()
 #q19(4)
 #q20()
+
 print("End")
+
+duration = 1000  # millisecond
+freq = 440  # Hz
+winsound.Beep(freq, duration)
