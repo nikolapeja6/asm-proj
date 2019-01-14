@@ -413,11 +413,12 @@ def q3(actor_network: nx.Graph, top: int = 10):
                     if acted_in[0] == is_genre[0]:
                         genres.add(is_genre[1])
         genres = sorted(genres)
-        answer.append([actor, cnt, ",".join(genres)])
+        answer.append([actor, cnt, get_actors_most_played_genre(actor)])
+        #answer.append([actor, cnt, ",".join(genres)])
 
     with open(results_path("q3.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(["Actor", "Movies num", "Genres"])
+        writer.writerow(["Actor", "Movies num", "Genre"])
 
         writer.writerows(answer)
     csvFile.close()
@@ -1189,11 +1190,11 @@ movie_network = create_movie_network()
 #q13(actor_network)
 #q14(actor_network, 2)
 #q15(genre_network)
-q16()
+#q16()
 #q17()
 #q18()
 #q19(4)
-#q20()
+q20(10)
 
 print("End")
 
