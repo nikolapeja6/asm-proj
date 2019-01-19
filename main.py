@@ -1,5 +1,3 @@
-
-import sys
 import os
 import zipfile
 import os.path as path
@@ -18,6 +16,7 @@ from collections import Counter
 import matplotlib.backends.backend_pdf
 import operator
 import winsound
+import inspect
 
 
 DATA_DIR: str = 'data'
@@ -214,6 +213,7 @@ def extract_secondary_dataset(clean: bool = False, revenue_filter: int = 0):
 
         genres_by_movies.append(tmp_list3)
 
+    '''
     with open(data_path(SECONDARY_DATASET_ACTORS), 'w') as csvFile:
         # Write header.
         csvFile.write("Actor, Movies\n")
@@ -224,10 +224,11 @@ def extract_secondary_dataset(clean: bool = False, revenue_filter: int = 0):
                 csvFile.write(id)
             csvFile.write("\n")
     csvFile.close()
+    '''
 
     print("Finished creating secondary dataset.")
 
-    # Found noise:
+    # Found inconsistency:
     #   - Evan Rachel Wood : Rachel Wood
     '''
     print("***")
@@ -369,9 +370,14 @@ def sort_edges_by_weight(graph: nx.Graph):
     return sorted(graph.edges(data=True), key=lambda x: x[2]['weight'], reverse=True)
 
 
-def q1(actors: nx.Graph, top: int = 10):
+def check():
+    print("Executing "+inspect.stack()[1].function)
     if not os.path.exists(RESULTS_DIR):
         os.makedirs(RESULTS_DIR)
+
+
+def q1(actors: nx.Graph, top: int = 10):
+    check()
 
     lst1 = sort_nodes_by_degree(actors)[0:top]
     lst2 = sort_nodes_by_weighed_degree(actors)[0:top]
@@ -387,6 +393,7 @@ def q1(actors: nx.Graph, top: int = 10):
 
 
 def q2(actor_network: nx.Graph):
+    check()
 
     n: int = actor_network.number_of_nodes()
     with open(results_path("q2.csv"), 'w', newline='') as csvFile:
@@ -401,6 +408,8 @@ def q2(actor_network: nx.Graph):
 
 
 def q3(actor_network: nx.Graph, top: int = 10):
+    check()
+
     answer = list()
 
     for actor,foo in sort_nodes_by_weighed_degree(actor_network)[0:top]:
@@ -424,6 +433,8 @@ def q3(actor_network: nx.Graph, top: int = 10):
     csvFile.close()
 
 def random_color():
+    check()
+
     #dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
     colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
 
@@ -440,6 +451,8 @@ def random_color():
 
 
 def generate_communities(actor_network: nx.Graph):
+    check()
+
     communities_generator = community.girvan_newman(actor_network)
     top_level_communities = next(communities_generator)
     next_level_communities = next(communities_generator)
@@ -448,6 +461,7 @@ def generate_communities(actor_network: nx.Graph):
 
 
 def q4(actor_network: nx.Graph):
+    check()
 
     answer = generate_communities(actor_network)
 
@@ -482,6 +496,8 @@ def q4(actor_network: nx.Graph):
     save_actor_graph_as_pdf(actor_network, color=colors, fileName=results_path("q4.pdf"))
 
 def get_actors_most_played_genre(actor: str):
+    check()
+
     gnrs = dict()
     for genre in list_of_genres:
         gnrs[genre] = 0
@@ -517,6 +533,7 @@ def get_dict_of_most_genres_per_actor():
     return ret
 
 def q5(actor_graph: nx.Graph):
+    check()
 
     actor_genre_dict = get_dict_of_most_genres_per_actor()
     genre_counter = Counter(actor_genre_dict.values())
@@ -617,7 +634,10 @@ def sorted_nodes_on_bc_dc(bc: list, dc: list):
     ret.sort(key=lambda x: x[1], reverse=True)
     return ret
 
+
 def q6(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph, top: int=10):
+    check()
+
     with open(results_path("q6.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
@@ -665,7 +685,10 @@ def q6(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
 
     csvFile.close()
 
+
 def q7(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    check()
+
     with open(results_path("q7.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
@@ -686,6 +709,8 @@ def my_avg(lst: dict):
 
 
 def q8(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    check()
+
     with open(results_path("q8.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
@@ -788,7 +813,10 @@ def q8(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
         '''
     csvFile.close()
 
+
 def q9(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    check()
+
     with open(results_path("q9.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
@@ -838,7 +866,10 @@ def q9(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
 
     csvFile.close()
 
+
 def q10(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    check()
+
     with open(results_path("q10.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
@@ -878,7 +909,10 @@ def q10(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Grap
 
     csvFile.close()
 
+
 def q11(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    check()
+
     pdf = matplotlib.backends.backend_pdf.PdfPages(results_path("q11.pdf"))
 
     fig = pl.figure()
@@ -935,6 +969,8 @@ def is_small_world(graph: nx.Graph):
 
 
 def q12(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph):
+    check()
+
     with open(results_path("q12.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
@@ -954,6 +990,8 @@ def q12(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Grap
 
 
 def q13(actor_network: nx.Graph):
+    check()
+
     with open(results_path("q13.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
@@ -969,22 +1007,39 @@ def q13(actor_network: nx.Graph):
 
     csvFile.close()
 
-def q14(actor_network: nx.Graph, degree_treshold=1):
+def q14(actor_network: nx.Graph, top: int=10):
+    check()
+
     with open(results_path("q14.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
         row = ["Actors in the center of the network"]
         writer.writerow(row)
 
+        subgraph = actor_network.subgraph(generate_communities(actor_network)[0])
+
+        #periphery = nx.periphery(subgraph)
+
+
+        answer = nx.closeness_centrality(subgraph)
+
+        answer = sorted(answer.items(), key= lambda x: x[1], reverse=True)[:top]
+
+        writer.writerows(answer)
+
+        '''
         for item in generate_communities(actor_network)[0]:
             if actor_network.degree(item) > degree_treshold:
                 row = [item]
                 writer.writerow(row)
+        '''
 
     csvFile.close()
 
 
 def q15(genre_network: nx.Graph, top: int = 10):
+    check()
+
     answer1 = sort_nodes_by_weighed_degree(genre_network)[:top]
     answer2 = sort_edges_by_weight(genre_network)[:top]
 
@@ -1011,7 +1066,8 @@ def q15(genre_network: nx.Graph, top: int = 10):
     csvFile.close()
 
 
-def q16(top: int=10):
+def q16(top: int = 10):
+    check()
 
     answer = list()
     for i in range(0, len(list_of_movies)):
@@ -1042,6 +1098,7 @@ def q16(top: int=10):
 
 
 def q17_helper(filter: int):
+    check()
 
     actor_graph = create_actor_network()
     genre_graph = create_genre_network()
@@ -1079,6 +1136,8 @@ def q17_helper(filter: int):
 
 
 def q17():
+    check()
+
     n = 20
     extract_secondary_dataset(True, n)
     q17_helper(n)
@@ -1103,6 +1162,8 @@ def q17():
 
 
 def q18(top: int = 1):
+    check()
+
     answer = sorted(director_dictionary.items(), key= lambda x: x[1], reverse=True)[:top]
     with open(results_path("q18.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
@@ -1116,7 +1177,10 @@ def q18(top: int = 1):
 
     csvFile.close()
 
+
 def q19(filter: int = 1):
+    check()
+
     with open(results_path("q19.csv"), 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, quoting=csv.QUOTE_MINIMAL)
 
@@ -1139,7 +1203,9 @@ def q19(filter: int = 1):
 
     csvFile.close()
 
+
 def q20(top:int = 1):
+    check()
 
     answer = dict()
     for item in list_of_movies:
@@ -1166,6 +1232,10 @@ actor_network = create_actor_network()
 genre_network = create_genre_network()
 movie_network = create_movie_network()
 
+print()
+print("Starting execution...")
+print()
+
 #print('Generating actor graph.')
 #save_actor_graph_as_pdf(actor_network)
 
@@ -1188,15 +1258,17 @@ movie_network = create_movie_network()
 #q11(actor_network, genre_network, movie_network)
 #q12(actor_network, genre_network, movie_network)
 #q13(actor_network)
-#q14(actor_network, 2)
+#q14(actor_network)
 #q15(genre_network)
 #q16()
 #q17()
 #q18()
 #q19(4)
-q20(10)
+#q20(10)
 
+print()
 print("End")
+print()
 
 duration = 1000  # millisecond
 freq = 440  # Hz
