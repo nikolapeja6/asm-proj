@@ -433,8 +433,6 @@ def q3(actor_network: nx.Graph, top: int = 10):
     csvFile.close()
 
 def random_color():
-    check()
-
     #dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
     colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
 
@@ -451,8 +449,6 @@ def random_color():
 
 
 def generate_communities(actor_network: nx.Graph):
-    check()
-
     communities_generator = community.girvan_newman(actor_network)
     top_level_communities = next(communities_generator)
     next_level_communities = next(communities_generator)
@@ -493,7 +489,35 @@ def q4(actor_network: nx.Graph):
                 break
         colors.append(community_colors[index])
 
-    save_actor_graph_as_pdf(actor_network, color=colors, fileName=results_path("q4.pdf"))
+    #save_actor_graph_as_pdf(actor_network, color=colors, fileName=results_path("q4.pdf"))
+
+    pdf = matplotlib.backends.backend_pdf.PdfPages(results_path("q4.pdf"))
+    number_of_nodes: int = len(actor_network.nodes())
+    n: int = 4
+    pos = nx.spring_layout(actor_network, k=(1 / math.sqrt(number_of_nodes)) * n)
+    pl.figure(figsize=(20, 20))  # Don't create a humongous figure
+    nx.draw_networkx(actor_network, pos, node_size=30, font_size='xx-small', with_labels=False, node_color=colors)
+    pl.axis('off')
+    pdf.savefig(pl.gcf(), dpi=900)
+
+    fig = pl.figure(figsize=(20, 20))
+    ax = fig.add_subplot(111)
+    pl.title('Distribution of actors across clusters')
+
+    cluter_counter = Counter(colors)
+
+    frequencies = cluter_counter.values()
+    names = list(cluter_counter.keys())
+
+    x_coordinates = np.arange(len(cluter_counter))
+    ax.bar(x_coordinates, frequencies, align='center', color=names)
+
+    ax.xaxis.set_major_locator(pl.FixedLocator(x_coordinates))
+    ax.xaxis.set_major_formatter(pl.FixedFormatter(names))
+    pdf.savefig(fig, dpi=900)
+
+    pdf.close()
+
 
 def get_actors_most_played_genre(actor: str):
     check()
@@ -800,15 +824,15 @@ def q8(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
 
         row = ["Edge connectivity", n1, n2, n3]
         writer.writerow(row)
-
+    
         '''
-        n1 = nx.average_node_connectivity(actor_network)
+        n1 = nx.average_node_connectivity(actor_network.subgraph(generate_communities(actor_network)[0]))
         print(n1)
         n2 = nx.average_node_connectivity(genre_network)
         print(n2)
-        n3 = nx.average_node_connectivity(movie_network)
+        n3 = nx.average_node_connectivity(movie_network.subgraph(generate_communities(movie_network)[0]))
         print(n3)
-        row = ["Connectivity", n1, n2, n3]
+        row = ["Average Node Connectivity", n1, n2, n3]
         writer.writerow(row)
         '''
     csvFile.close()
@@ -1245,7 +1269,7 @@ print()
 #print("Generating movie network.")
 #save_movie_graph_as_pdf(create_movie_network())
 
-#q1(actor_network, 20)
+q1(actor_network, 20)
 #q2(actor_network)
 #q3(actor_network)
 #q4(actor_network)
@@ -1269,6 +1293,8 @@ print()
 print()
 print("End")
 print()
+
+# write_gexf(G, path, encoding='utf-8', prettyprint=True, version='1.1draft')[source]
 
 duration = 1000  # millisecond
 freq = 440  # Hz
