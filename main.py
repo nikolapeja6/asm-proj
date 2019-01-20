@@ -260,9 +260,10 @@ def create_actor_network():
         for actor1 in actors:
             for actor2 in actors:
                 if actor_graph.has_edge(actor1, actor2):
-                    actor_graph[actor1][actor2]['weight'] += 1
+                    actor_graph[actor1][actor2]['weight'] += 0.5
                 else:
-                    actor_graph.add_edge(actor1, actor2, weight=1)
+                    actor_graph.add_edge(actor1, actor2, weight=0.5)
+
 
     actor_graph.remove_edges_from(actor_graph.selfloop_edges())
     return actor_graph
@@ -293,9 +294,9 @@ def create_genre_network():
         for genre1 in genres:
             for genre2 in genres:
                 if genre_graph.has_edge(genre1, genre2):
-                    genre_graph[genre1][genre2]['weight'] += 1
+                    genre_graph[genre1][genre2]['weight'] += 0.5
                 else:
-                    genre_graph.add_edge(genre1, genre2, weight=1)
+                    genre_graph.add_edge(genre1, genre2, weight=0.5)
 
     genre_graph.remove_edges_from(genre_graph.selfloop_edges())
     return genre_graph
@@ -672,7 +673,7 @@ def q6(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
         dc = sorted_nodes_on_degree_centrality(actor_network)
         bc_dc = sorted_nodes_on_bc_dc(bc, dc)
 
-        for i in range(1,top+1):
+        for i in range(0,top):
             row = [i,bc[i][0], bc[i][1],dc[i][0], dc[i][1],bc_dc[i][0], bc_dc[i][1]]
             writer.writerow(row)
 
@@ -686,7 +687,7 @@ def q6(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
         dc = sorted_nodes_on_degree_centrality(genre_network)
         bc_dc = sorted_nodes_on_bc_dc(bc, dc)
 
-        for i in range(1, top + 1):
+        for i in range(0, top ):
             row = [i, bc[i][0], bc[i][1], dc[i][0], dc[i][1], bc_dc[i][0], bc_dc[i][1]]
             writer.writerow(row)
 
@@ -700,7 +701,7 @@ def q6(actor_network: nx.Graph, genre_network: nx.Graph, movie_network: nx.Graph
         dc = sorted_nodes_on_degree_centrality(movie_network)
         bc_dc = sorted_nodes_on_bc_dc(bc, dc)
 
-        for i in range(1, top + 1):
+        for i in range(0, top ):
             row = [i, bc[i][0], bc[i][1], dc[i][0], dc[i][1], bc_dc[i][0], bc_dc[i][1]]
             writer.writerow(row)
 
@@ -1269,7 +1270,7 @@ print()
 #print("Generating movie network.")
 #save_movie_graph_as_pdf(create_movie_network())
 
-q1(actor_network, 20)
+#q1(actor_network, 20)
 #q2(actor_network)
 #q3(actor_network)
 #q4(actor_network)
