@@ -280,9 +280,9 @@ def save_actor_graph_as_pdf(actor_graph: nx.Graph, color='r', fileName = ""):
     pl.axis('off')
     #pl.show()
     if fileName != "":
-        pl.savefig(fileName, format='pdf', dpi=900)
+        pl.savefig(results_path(fileName), format='pdf', dpi=900)
     else:
-        pl.savefig('actors_default_dstx'+str(n)+suffix()+'.pdf', format='pdf', dpi=900)
+        pl.savefig(results_path('actors_default_dstx'+str(n)+suffix()+'.pdf'), format='pdf', dpi=900)
 
 
 def create_genre_network():
@@ -312,7 +312,7 @@ def save_genre_graph_as_pdf(genre_graph: nx.Graph):
     nx.draw_networkx(genre_graph, pos, node_size=5000, font_size='medium', style='dotted', with_labels=True, node_shape='s', font_color='white')
     pl.axis('off')
     #pl.show()
-    pl.savefig('genre_default'+str(n)+suffix()+'.pdf', format='pdf', dpi=900)
+    pl.savefig(results_path('genre_default'+str(n)+suffix()+'.pdf'), format='pdf', dpi=900)
 
 
 def create_movie_network():
@@ -334,9 +334,9 @@ def create_movie_network():
                     node1, node2 = node2, node1
 
                 if movie_graph.has_edge(node1, node2):
-                    movie_graph[node1][node2]['weight'] += 1
+                    movie_graph[node1][node2]['weight'] += 0.5
                 else:
-                    movie_graph.add_edge(node1, node2, weight=1)
+                    movie_graph.add_edge(node1, node2, weight=0.5)
 
     movie_graph.remove_edges_from(movie_graph.selfloop_edges())
     return movie_graph
@@ -353,7 +353,7 @@ def save_movie_graph_as_pdf(movie_graph: nx.Graph):
                      font_color='white', edge_color='grey')
     pl.axis('off')
     #pl.show()
-    pl.savefig('movie_default_20_x'+str(n)+suffix()+'.pdf', format='pdf', dpi=900)
+    pl.savefig(results_path('movie_default_20_x'+str(n)+suffix()+'.pdf'), format='pdf', dpi=900)
 
 
 def sort_nodes_by_degree(graph: nx.Graph):
@@ -490,7 +490,7 @@ def q4(actor_network: nx.Graph):
                 break
         colors.append(community_colors[index])
 
-    #save_actor_graph_as_pdf(actor_network, color=colors, fileName=results_path("q4.pdf"))
+    #save_actor_graph_as_pdf(actor_network, color=colors, fileName="q4.pdf")
 
     pdf = matplotlib.backends.backend_pdf.PdfPages(results_path("q4.pdf"))
     number_of_nodes: int = len(actor_network.nodes())
